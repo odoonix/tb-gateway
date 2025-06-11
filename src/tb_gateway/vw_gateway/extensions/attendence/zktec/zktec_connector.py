@@ -40,14 +40,16 @@ def _check_user_id_company(user_id_company):
 
 
 def is_device_id(magic_number, user_id_device):
-    if magic_number == 0x0:
-        return True
+    # TODO: maso, 2025: check if the main process works well
+    # if magic_number == 0x0:
+    #     return True
     return (int(user_id_device) >> 9) == magic_number
 
 
 def convert_to_device_id(magic_number, user_id_company):
-    if magic_number == 0x0:
-        return user_id_company
+    # TODO: maso, 2025: check if the main process works well
+    # if magic_number == 0x0:
+    #     return user_id_company
     _check_magic_number(magic_number)
     _check_user_id_company(user_id_company)
     return (magic_number << 9) | user_id_company
@@ -55,8 +57,9 @@ def convert_to_device_id(magic_number, user_id_company):
 
 def convert_to_company_id(magic_number, user_id_device):
     user_id_device = int(user_id_device)
-    if magic_number == 0x0:
-        return user_id_device
+    # TODO: maso, 2025: check if the main process works well
+    # if magic_number == 0x0:
+    #     return user_id_device
     _check_magic_number(magic_number)
     return (magic_number << 9) ^ user_id_device
 
@@ -639,4 +642,4 @@ class ZktecPro(Connector, Thread):
                 lines = f.readlines()
                 return lines[0]
         except:
-            return 0
+            return "1999-01-01 00:00:00"
