@@ -1,7 +1,6 @@
-
+from typing import Annotated
 
 import typer
-from typing_extensions import Annotated
 
 from tb_gateway.zkteco import devices
 
@@ -13,8 +12,7 @@ def check(
     ip: Annotated[str, typer.Option(help="IP address of the device.")],
     password: Annotated[str, typer.Option(help="Devise access key.")],
 ):
-    """Checks connection to the ZK devices
-    """
+    """Checks connection to the ZK devices"""
     devices.zk_devices_check_connection(ip, password)
 
 
@@ -23,8 +21,7 @@ def check_utf(
     ip: Annotated[str, typer.Option(help="IP address of the device.")],
     password: Annotated[str, typer.Option(help="Devise access key.")],
 ):
-    """Check if possible to write UTF8 text
-    """
+    """Check if possible to write UTF8 text"""
     devices.zk_devices_check_utf8(ip, password)
 
 

@@ -1,23 +1,17 @@
-import copy
-import json
-import os
-from threading import Thread
-import traceback
-from thingsboard_gateway.connectors.connector import Connector
-from thingsboard_gateway.gateway.constant_enums import DownlinkMessageType, Status
-from pathlib import Path
-from zk import ZK, const
-from zk.exception import ZKErrorResponse, ZKNetworkError
-from datetime import datetime
-import time
-import pytz
 import logging
-from simplejson import dumps
+import os
 import threading
-import signal
-import sys
-from schema import Schema, And, Use, Optional, SchemaError, Or
-from functools import reduce
+import time
+import traceback
+from pathlib import Path
+from threading import Thread
+
+import pytz
+from schema import And, Optional, Or, Schema, SchemaError
+from thingsboard_gateway.connectors.connector import Connector
+from thingsboard_gateway.gateway.constant_enums import Status
+from zk import ZK
+from zk.exception import ZKNetworkError
 
 log = logging.getLogger("connector")
 
@@ -28,15 +22,17 @@ MASCK_MIN = 1
 
 
 def _check_magic_number(magic_number):
-    if (magic_number > MASCK_MAX or magic_number < 0):
+    if magic_number > MASCK_MAX or magic_number < 0:
         raise Exception(
-            'Magic number must bigger than {} and smaller than {}'.format(MASCK_MIN, MASCK_MAX))
+            f"Magic number must bigger than {MASCK_MIN} and smaller than {MASCK_MAX}"
+        )
 
 
 def _check_user_id_company(user_id_company):
-    if (user_id_company >= (MASCK_MIN << 9)):
+    if user_id_company >= (MASCK_MIN << 9):
         raise Exception(
-            'Uaser ID from company must be bigger than 1 and smaller than {}'.format(MASCK_MIN))
+            f"Uaser ID from company must be bigger than 1 and smaller than {MASCK_MIN}"
+        )
 
 
 def is_device_id(magic_number, user_id_device):
@@ -65,65 +61,69 @@ def convert_to_company_id(magic_number, user_id_device):
 
 
 def not_equal_packet(packet_send, packet_save):
-    if len(packet_send["telemetry"]) != 0 or packet_save["attributes"] != packet_send["attributes"]:
+    if (
+        len(packet_send["telemetry"]) != 0
+        or packet_save["attributes"] != packet_send["attributes"]
+    ):
         return True
 
 
-ATTENDANCE_TELEMETRY_SCHEMA = Schema({
-    Optional('deviceName'): And(str, len),
-    Optional('deviceType'): And(str, len),
-    Optional('attributes'): [{
-        'Device_name': str
-    }],
-    Optional('telemetry'): [{
-        "ts": Or(int, float),
-        "values": {
-            "user_id": And(int),
-            "timestamp":  And(str, len),
-            "punch": And(str, len),
-            "device_name":  And(str, len),
-        }
-    }]
-}, ignore_extra_keys=True)
+ATTENDANCE_TELEMETRY_SCHEMA = Schema(
+    {
+        Optional("deviceName"): And(str, len),
+        Optional("deviceType"): And(str, len),
+        Optional("attributes"): [{"Device_name": str}],
+        Optional("telemetry"): [
+            {
+                "ts": Or(int, float),
+                "values": {
+                    "user_id": And(int),
+                    "timestamp": And(str, len),
+                    "punch": And(str, len),
+                    "device_name": And(str, len),
+                },
+            }
+        ],
+    },
+    ignore_extra_keys=True,
+)
 
 
 class ZktecPro(Connector, Thread):
-
     def __init__(self, gateway, config, connector_type):
         super().__init__()
-        self.statistics = {'MessagesReceived': 0,
-                           'MessagesSent': 0}
+        self.statistics = {"MessagesReceived": 0, "MessagesSent": 0}
         self.gateway = gateway  # Reference to TB Gateway
         self.connector_type = connector_type  # Use For Convertor
         self.config = config  # zktec.json Contents
-        self.__id = self.config.get('id')
+        self.__id = self.config.get("id")
 
         # Extract main sections from configuration ---------------------------------------------------------------------
-        self.__device = config.get('device')
-        self.__storage_path = config.get('storage', ".")
-        self._name = self.__device.get('name', 'zktec')
-        self._ip = self.__device.get('ip', '127.0.0.1')
-        self._port = self.__device.get('port', "1883")
-        self._password = self.__device.get('password', "1")
-        self._timezone = self.__device.get('timezone', "210")
-        self._magic_number = int(self.__device.get('magic_number', "0"))
+        self.__device = config.get("device")
+        self.__storage_path = config.get("storage", ".")
+        self._name = self.__device.get("name", "zktec")
+        self._ip = self.__device.get("ip", "127.0.0.1")
+        self._port = self.__device.get("port", "1883")
+        self._password = self.__device.get("password", "1")
+        self._timezone = self.__device.get("timezone", "210")
+        self._magic_number = int(self.__device.get("magic_number", "0"))
 
         # Set up lifecycle flags ---------------------------------------------------------------------------------------
         self.connection = False  # Service variable for check connection to device
-        self.__logger = logging.getLogger("zkteck-"+self._ip)
-        self.__deviceName = config.get('deviceName', 'deviceName')
-        self.__deviceType = config.get('deviceType', 'default')
+        self.__logger = logging.getLogger("zkteck-" + self._ip)
+        self.__deviceName = config.get("deviceName", "deviceName")
+        self.__deviceType = config.get("deviceType", "default")
         self.stopped = False
         self.daemon = True
         # Create device
-        self.gateway.add_device(self.__deviceName, {"connector": self},
-                                device_type=self.__deviceType)
+        self.gateway.add_device(
+            self.__deviceName, {"connector": self}, device_type=self.__deviceType
+        )
 
-        self._keep_alive_thread = Thread(
-            target=self._send_keep_alive, daemon=True)
+        self._keep_alive_thread = Thread(target=self._send_keep_alive, daemon=True)
         self._keep_alive_thread.start()
 
-        log.info(f'magic number value is : {self._magic_number}')
+        log.info(f"magic number value is : {self._magic_number}")
 
     def get_type(self):
         return self.connector_type
@@ -148,35 +148,38 @@ class ZktecPro(Connector, Thread):
             try:
                 self._run()
             except Exception as ex:
-                logging.error('ZKTec unsupported exception happend: %s', ex)
+                logging.error("ZKTec unsupported exception happend: %s", ex)
                 traceback.print_exc()
             finally:
                 time.sleep(30)
 
     def _run(self):
         result_dict = {
-            'deviceName': self.__deviceName,
-            'deviceType': self.__deviceType,
-            'attributes': [],
-            'telemetry': [],
+            "deviceName": self.__deviceName,
+            "deviceType": self.__deviceType,
+            "attributes": [],
+            "telemetry": [],
         }
 
         # Send Attribute
-        result_dict['attributes'].append(self._zkteco_get_attribute())
-        device_platform = result_dict['attributes'][0]['Platform']
+        result_dict["attributes"].append(self._zkteco_get_attribute())
+        device_platform = result_dict["attributes"][0]["Platform"]
 
         # Send Telemetry
         attendances = self._zkteco_get_attendance()
         for attendance in attendances:
             if is_device_id(self._magic_number, attendance.user_id):
                 item = self._convert_attendance_to_telemetry(
-                    attendance, device_platform)
+                    attendance, device_platform
+                )
 
                 if self._should_send_attendance(item):
-                    result_dict['telemetry'].append(item)
+                    result_dict["telemetry"].append(item)
 
         # Send result to thingsboard
-        if self._must_send_to_storage(result_dict) and self._send_to_storage(result_dict):
+        if self._must_send_to_storage(result_dict) and self._send_to_storage(
+            result_dict
+        ):
             self.PACKET_SAVE = result_dict
 
     def open(self):
@@ -185,7 +188,6 @@ class ZktecPro(Connector, Thread):
         self.start()
 
     def close(self):
-
         log.info(f"Closing ZKTeco connector for device {self.__deviceName}")
         self.stopped = True
         try:
@@ -197,7 +199,8 @@ class ZktecPro(Connector, Thread):
             self.join(timeout=2.0)
             if self.is_alive():
                 log.warning(
-                    f"ZKTeco connector thread {self.__deviceName} did not stop in time")
+                    f"ZKTeco connector thread {self.__deviceName} did not stop in time"
+                )
         log.info(f"ZKTeco connector {self.__deviceName} closed successfully")
 
     def on_attributes_update(self, content):
@@ -213,8 +216,10 @@ class ZktecPro(Connector, Thread):
             self.gateway.send_rpc_reply(
                 device=content["device"],
                 req_id=content["data"]["id"],
-                content={"success_sent": "False",
-                         "message": "ZKTec unsupported exception happend %s" % ex}
+                content={
+                    "success_sent": "False",
+                    "message": "ZKTec unsupported exception happend %s" % ex,
+                },
             )
 
     def _server_side_rpc_handler(self, content, tries_count=3):
@@ -234,16 +239,16 @@ class ZktecPro(Connector, Thread):
                 return self.update_fingerprint(params)
         except ZKNetworkError as netex:
             self.__logger.error(
-                "ZKTec network error detected : %s, %s", netex, traceback.extract_stack)
+                "ZKTec network error detected : %s, %s", netex, traceback.extract_stack
+            )
             if tries_count > 0:
-
-                return self._server_side_rpc_handler(content, tries_count-1)
+                return self._server_side_rpc_handler(content, tries_count - 1)
             raise netex
 
     def update_fingerprint(self, params):
         magic_user_id = convert_to_device_id(
             user_id_company=int(params["user_id_change"]),
-            magic_number=self._magic_number
+            magic_number=self._magic_number,
         )
         self._zkteco_enroll_user(uid=magic_user_id)
 
@@ -255,8 +260,8 @@ class ZktecPro(Connector, Thread):
             exist_user = 0
             # set magic number
             magic_user_id = convert_to_device_id(
-                user_id_company=int(value["uid"]),
-                magic_number=self._magic_number)
+                user_id_company=int(value["uid"]), magic_number=self._magic_number
+            )
 
             for item in users:
                 if item.uid == magic_user_id:
@@ -264,12 +269,14 @@ class ZktecPro(Connector, Thread):
 
             # user not exist Create user
             if exist_user == 0:
-                self._zkteco_set_user(uid=int(magic_user_id),
-                                      name=value["name"],
-                                      privilege=value["privilege"],
-                                      password=value["password"],
-                                      group_id=value["group_id"],
-                                      card=int(value["card"]))
+                self._zkteco_set_user(
+                    uid=int(magic_user_id),
+                    name=value["name"],
+                    privilege=value["privilege"],
+                    password=value["password"],
+                    group_id=value["group_id"],
+                    card=int(value["card"]),
+                )
             else:
                 # user is exist delete and create
                 # save finger print
@@ -282,41 +289,42 @@ class ZktecPro(Connector, Thread):
                         save_fingers.append(finger)
 
                 self._zkteco_delete_user(user_id=magic_user_id)
-                self._zkteco_set_user(uid=int(magic_user_id),
-                                      name=value["name"],
-                                      privilege=value["privilege"],
-                                      password=value["password"],
-                                      group_id=value["group_id"],
-                                      card=int(value["card"]))
+                self._zkteco_set_user(
+                    uid=int(magic_user_id),
+                    name=value["name"],
+                    privilege=value["privilege"],
+                    password=value["password"],
+                    group_id=value["group_id"],
+                    card=int(value["card"]),
+                )
                 # add finger print
                 self._zkteco_save_user_template(magic_user_id, save_fingers)
 
             self._gateway_send_rpc_reply(
                 device=content["device"],
                 req_id=content["data"]["id"],
-                content={"success_sent": 'True'}
+                content={"success_sent": "True"},
             )
 
     def del_user(self, params, content):
-
         for key, value in params.items():
             magic_user_id = convert_to_device_id(
-                user_id_company=int(value['user_id_delete']),
-                magic_number=self._magic_number)
+                user_id_company=int(value["user_id_delete"]),
+                magic_number=self._magic_number,
+            )
 
             self._zkteco_delete_user(magic_user_id)
 
             self.gateway.send_rpc_reply(
                 device=content["device"],
                 req_id=content["data"]["id"],
-                content={"success_sent": 'True'}
+                content={"success_sent": "True"},
             )
 
     ##############################################################################################
     #                                 packets utils
     ##############################################################################################
-    PACKET_SAVE = {'attributes': [],
-                   'telemetry': []}
+    PACKET_SAVE = {"attributes": [], "telemetry": []}
 
     def _must_send_to_storage(self, result_dict):
         # Check Successful Send
@@ -335,19 +343,21 @@ class ZktecPro(Connector, Thread):
     def _should_send_attendance(self, item):
         lastdatetime = self.lastdatetime_text_file()
         # TODO: maso, 2023: check last time stamp
-        timestamp = item['values'].get('timestamp', '2000-01-01 00:00:00')
+        timestamp = item["values"].get("timestamp", "2000-01-01 00:00:00")
         return timestamp > lastdatetime
 
     def _convert_attendance_to_telemetry(self, attendance, device_platform):
-
         #
         # Convert device Naive datetime to Aware datetime
         #
         # NOTE: datetime from the device is formed as a Naive datetime
         # but in the local timezone
         tz = pytz.FixedOffset(int(self._timezone))
-        attendance_date = (attendance.timestamp.replace(
-            tzinfo=tz).astimezone(pytz.utc).replace(tzinfo=None))
+        attendance_date = (
+            attendance.timestamp.replace(tzinfo=tz)
+            .astimezone(pytz.utc)
+            .replace(tzinfo=None)
+        )
 
         _punch = "in"
         if device_platform == "ZMM220_TFT" and attendance.punch == 2:
@@ -356,24 +366,26 @@ class ZktecPro(Connector, Thread):
             _punch = "out"
 
         attendance_telemetry = {
-            "ts": int(attendance_date.timestamp())*1000,
+            "ts": int(attendance_date.timestamp()) * 1000,
             "values": {
                 "user_id": convert_to_company_id(
                     magic_number=self._magic_number,
-                    user_id_device=int(attendance.user_id)
+                    user_id_device=int(attendance.user_id),
                 ),
                 "timestamp": str(attendance_date),
                 "punch": _punch,
-                "device_name": self.__deviceName
-            }
+                "device_name": self.__deviceName,
+            },
         }
 
         return attendance_telemetry
+
     # Main method of thread, must contain an infinite loop and all calls to data receiving/processing functions.
 
     def get_storage_path(self):
-        path_storage = Path(self.__storage_path + '/%s.txt' %
-                            self.config.get('deviceName'))
+        path_storage = Path(
+            self.__storage_path + "/%s.txt" % self.config.get("deviceName")
+        )
         return path_storage
 
     ##############################################################################################
@@ -388,15 +400,12 @@ class ZktecPro(Connector, Thread):
             return False
 
     def _zkteco_close(self):
-
         try:
             if self.connection is not None:
                 self.connection.disconnect()
-                log.debug(
-                    f"ZKTeco connection for {self.__deviceName} disconnected")
+                log.debug(f"ZKTeco connection for {self.__deviceName} disconnected")
         except Exception as e:
-            log.error(
-                f"Error disconnecting ZKTeco device {self.__deviceName}: {e}")
+            log.error(f"Error disconnecting ZKTeco device {self.__deviceName}: {e}")
         finally:
             self.connection = None
 
@@ -416,8 +425,7 @@ class ZktecPro(Connector, Thread):
             force_udp=False,
             ommit_ping=True,
             verbose=False,
-            encoding="cp1256"
-
+            encoding="cp1256",
         )
         if not self.connection.connect():
             raise Exception("Fail to connect to the device")
@@ -471,7 +479,7 @@ class ZktecPro(Connector, Thread):
             except:
                 logging.info("Face Fun On device Not available")
             try:
-                compat_old_firmware = self.connection.get_compat_old_firmware(),
+                compat_old_firmware = (self.connection.get_compat_old_firmware(),)
             except:
                 logging.info("Compat Old Firmware device Not available")
             try:
@@ -508,7 +516,7 @@ class ZktecPro(Connector, Thread):
                 "Compat_Old_Firmware": compat_old_firmware,
                 "Network_Params": network_params,
                 "Mac": mac,
-                "Pin_Width": pin_width
+                "Pin_Width": pin_width,
             }
         finally:
             self._zkteco_close()
@@ -569,7 +577,6 @@ class ZktecPro(Connector, Thread):
             sem.release()
 
     def _zkteco_enroll_user(self, *args, **kwargs):
-
         sem.acquire()
         self._zkteco_connect()
         try:
@@ -585,25 +592,25 @@ class ZktecPro(Connector, Thread):
                 keep_alive_data = {
                     "deviceName": self.__deviceName,
                     "deviceType": self.__deviceType,
-                    "attributes": [
-                        {"status": "active"}
-                    ],
+                    "attributes": [{"status": "active"}],
                     "telemetry": [
                         {
                             "ts": int(time.time() * 1000),
                             "values": {
                                 "keep_alive": True,
-                                "device_name": self.__deviceName
-                            }
+                                "device_name": self.__deviceName,
+                            },
                         }
-                    ]
+                    ],
                 }
                 if self._send_to_storage(keep_alive_data):
                     self.__logger.info(
-                        f"Sent keep-alive message for device {self.__deviceName}")
+                        f"Sent keep-alive message for device {self.__deviceName}"
+                    )
                 else:
                     self.__logger.warning(
-                        f"Failed to send keep-alive message for device {self.__deviceName}")
+                        f"Failed to send keep-alive message for device {self.__deviceName}"
+                    )
             except Exception as e:
                 self.__logger.error(f"Error sending keep-alive message: {e}")
             for _ in range(int(KEEP_ALIVE_INTERVAL / 10)):
@@ -619,18 +626,24 @@ class ZktecPro(Connector, Thread):
         self.gateway.send_rpc_reply(*args, **kwargs)
 
     def _send_to_storage(self, result_dict):
-        if self.gateway.send_to_storage(self.get_name(), self.get_id(), result_dict) == Status.SUCCESS:
-            timestamps = [item['values']['timestamp']
-                          for item in result_dict['telemetry'] if item['values'].get('timestamp', False)]
+        if (
+            self.gateway.send_to_storage(self.get_name(), self.get_id(), result_dict)
+            == Status.SUCCESS
+        ):
+            timestamps = [
+                item["values"]["timestamp"]
+                for item in result_dict["telemetry"]
+                if item["values"].get("timestamp", False)
+            ]
             if not timestamps:
                 return True
             path = self.get_storage_path()
             if not os.path.exists(os.path.dirname(path.absolute())):
                 try:
                     os.makedirs(os.path.dirname(path.absolute()))
-                except OSError as exc:  # Guard against race condition
+                except OSError:  # Guard against race condition
                     raise
-            with open(path, 'w') as f:
+            with open(path, "w") as f:
                 f.write(max(timestamps))
             return True
         return False
@@ -638,7 +651,7 @@ class ZktecPro(Connector, Thread):
     def lastdatetime_text_file(self):
         # Fetch last date time
         try:
-            with open(self.get_storage_path(), 'r') as f:
+            with open(self.get_storage_path()) as f:
                 lines = f.readlines()
                 return lines[0]
         except:

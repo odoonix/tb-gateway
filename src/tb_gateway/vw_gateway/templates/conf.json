@@ -7,7 +7,7 @@
     "statistics": {
       "enable": true,
       "statsSendPeriodInSeconds": 3600,
-      "configuration" : "statistics.json"
+      "configuration": "statistics.json"
     },
     "deviceFiltering": {
       "enable": false,
@@ -53,11 +53,12 @@
     "keepAliveTimeMs": 10000,
     "keepAliveTimeoutMs": 5000
   },
-  "connectors": [{
-    "name": "ZKTec Factory ",
-    "type": "attendence/zktec" ,
-    "configuration": "devices/zktec.json",
-    "class": "ZktecPro"
-  }]
+  "connectors": [
+    {
+      "name": "ZKTec Factory ",
+      "type": "attendence/zktec",
+      "configuration": "devices/zktec.json",
+      "class": "ZktecPro"
+    }
+  ]
 }
-

@@ -37,9 +37,7 @@
       "console": "integratedTerminal",
       "justMyCode": false,
       "cwd": "/home/esmaeil/project_other/iot_new/iot/test-dir",
-      "args": [
-        "init"
-      ]
+      "args": ["init"]
     }
   ]
 }

@@ -1,54 +1,88 @@
-# Temporary and binary files
-*~
+# Byte-compiled / optimized / DLL files
+__pycache__/
 *.py[cod]
+/.venv
+/.pytest_cache
+/.ruff_cache
+
+# C extensions
 *.so
-*.cfg
-!.isort.cfg
-!setup.cfg
-*.orig
-*.log
-*.pot
-__pycache__/*
-.cache/*
-.*.swp
-*/.ipynb_checkpoints/*
+
+# Distribution / packaging
+.Python
+env/
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+*.eggs
+
+# Windows installers
+*.msi
+
+# Debian packages
+*.deb
+
+# Redhat packages
+*.rpm
+
+# MacOS packages
+*.dmg
+*.pkg
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+
+# Translations
+*.mo
+
+# Pycharm
+.idea
+
+# Eclipse
+.settings
+
+# Visual Studio cache/options directory
+.vs/
+.vscode
+
+# OSX Files
 .DS_Store
 
-# Project files
-.ropeproject
+# Django stuff:
+*.log
+
+# Mr Developer
+.mr.developer.cfg
 .project
 .pydevproject
-.settings
-.idea
-.vscode
-tags
 
-# Package files
-*.egg
-*.eggs/
-.installed.cfg
-*.egg-info
+# Rope
+.ropeproject
 
-# Unittest and coverage
-htmlcov/*
-.coverage
-.coverage.*
-.tox
-junit*.xml
-coverage.xml
-.pytest_cache/
+# Sphinx documentation
+docs/_build/
 
-# Build and docs folder/files
-build/*
-dist/*
-sdist/*
-docs/api/*
-docs/_rst/*
-docs/_build/*
-cover/*
-MANIFEST
+# Backup files
+*~
+*.swp
 
-# Per-project virtualenvs
-.venv*/
-.conda*/
-.python-version
+# OCA rules
+!static/lib/

@@ -1,19 +1,19 @@
 #!/usr/bin/python3
+import importlib.resources as resources
+import logging
 import os
-
-
-from thingsboard_gateway.gateway.tb_gateway_service import TBGatewayService
-from thingsboard_gateway.tb_utility.tb_loader import TBModuleLoader
 import os.path
-from pyfiglet import Figlet
-import pkg_resources
-import typer
+import shutil
 import signal
 import sys
-import logging
-import shutil
 from pathlib import Path
-import importlib.resources as resources
+
+import pkg_resources
+import typer
+from pyfiglet import Figlet
+from thingsboard_gateway.gateway.tb_gateway_service import TBGatewayService
+from thingsboard_gateway.tb_utility.tb_loader import TBModuleLoader
+
 import tb_gateway.vw_gateway.templates as templates
 
 logging.basicConfig(level=logging.INFO)
@@ -44,16 +44,16 @@ def signal_handler(sig, frame):
 
 @app.command()
 def main(path_cofig: str):
-    f = Figlet(font='big')
-    print(f.renderText('Odoonix'))
-    print("Thingsboard Gateway Package Version is: " +
-          pkg_resources.get_distribution("thingsboard-gateway").version)
+    f = Figlet(font="big")
+    print(f.renderText("Odoonix"))
+    print(
+        "Thingsboard Gateway Package Version is: "
+        + pkg_resources.get_distribution("thingsboard-gateway").version
+    )
 
     current_file_path = os.path.abspath(__file__)
     current_folder = os.path.dirname(current_file_path)
-    TBModuleLoader.PATHS.append(
-        os.path.join(current_folder, "extensions")
-    )
+    TBModuleLoader.PATHS.append(os.path.join(current_folder, "extensions"))
     global gateway
     gateway = TBGatewayService(path_cofig)
 

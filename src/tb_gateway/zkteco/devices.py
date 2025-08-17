@@ -1,5 +1,3 @@
-import sys
-import signal
 import logging
 
 import rich
@@ -7,11 +5,16 @@ from zk import ZK, const
 
 
 def zk_devices_check_connection(ip=None, password=None, port=4370):
-    """Connects to the ZK device and get more information from device.
-    """
+    """Connects to the ZK device and get more information from device."""
     logging.debug("create ZK instance")
-    zk = ZK(str(ip), port=port, timeout=5, password=int(
-        password), force_udp=False, ommit_ping=True)
+    zk = ZK(
+        str(ip),
+        port=port,
+        timeout=5,
+        password=int(password),
+        force_udp=False,
+        ommit_ping=True,
+    )
 
     try:
         logging.debug("Connect to device")
@@ -26,12 +29,17 @@ def zk_devices_check_connection(ip=None, password=None, port=4370):
 
 
 def zk_devices_check_utf8(ip=None, password=None, port=4370):
-    """Check devices language
-    """
+    """Check devices language"""
     conn = None
     logging.debug("create ZK instance")
-    zk = ZK(str(ip), port=port, timeout=5, password=int(
-        password), force_udp=False, ommit_ping=True)
+    zk = ZK(
+        str(ip),
+        port=port,
+        timeout=5,
+        password=int(password),
+        force_udp=False,
+        ommit_ping=True,
+    )
 
     try:
         logging.debug("Connect to device")
@@ -40,8 +48,15 @@ def zk_devices_check_utf8(ip=None, password=None, port=4370):
         # process is run
         conn.disable_device()
         # another commands will be here!
-        conn.set_user(uid=1000, name='فارسی', privilege=const.USER_DEFAULT,
-                      password='', group_id='', user_id='1000', card=0)
+        conn.set_user(
+            uid=1000,
+            name="فارسی",
+            privilege=const.USER_DEFAULT,
+            password="",
+            group_id="",
+            user_id="1000",
+            card=0,
+        )
 
     except Exception:
         logging.error("Fail to get attendences", exc_info=True)
@@ -51,11 +66,16 @@ def zk_devices_check_utf8(ip=None, password=None, port=4370):
 
 
 def zk_devices_get_attendance(ip=None, password=None, port=4370):
-    """Check devices language
-    """
+    """Check devices language"""
     logging.debug("create ZK instance")
-    zk = ZK(str(ip), port=port, timeout=5, password=int(
-        password), force_udp=False, ommit_ping=True)
+    zk = ZK(
+        str(ip),
+        port=port,
+        timeout=5,
+        password=int(password),
+        force_udp=False,
+        ommit_ping=True,
+    )
 
     try:
         logging.debug("Connect to device")
@@ -72,11 +92,16 @@ def zk_devices_get_attendance(ip=None, password=None, port=4370):
 
 
 def zk_devices_get_user_info(ip=None, password=None, port=4370):
-    """Check devices language
-    """
+    """Check devices language"""
     logging.debug("create ZK instance")
-    zk = ZK(str(ip), port=port, timeout=5, password=int(
-        password), force_udp=False, ommit_ping=True)
+    zk = ZK(
+        str(ip),
+        port=port,
+        timeout=5,
+        password=int(password),
+        force_udp=False,
+        ommit_ping=True,
+    )
 
     try:
         logging.debug("Connect to device")
@@ -87,15 +112,15 @@ def zk_devices_get_user_info(ip=None, password=None, port=4370):
         # Example: Get All Users
         users = conn.get_users()
         for user in users:
-            privilege = 'User'
+            privilege = "User"
             if user.privilege == const.USER_ADMIN:
-                privilege = 'Admin'
-            rich.print('+ UID #{}'.format(user.uid))
-            rich.print('  Name       : {}'.format(user.name))
-            rich.print('  Privilege  : {}'.format(privilege))
-            rich.print('  Password   : {}'.format(user.password))
-            rich.print('  Group ID   : {}'.format(user.group_id))
-            rich.print('  User  ID   : {}'.format(user.user_id))
+                privilege = "Admin"
+            rich.print(f"+ UID #{user.uid}")
+            rich.print(f"  Name       : {user.name}")
+            rich.print(f"  Privilege  : {privilege}")
+            rich.print(f"  Password   : {user.password}")
+            rich.print(f"  Group ID   : {user.group_id}")
+            rich.print(f"  User  ID   : {user.user_id}")
 
         # Test Voice: Say Thank You
         conn.test_voice()
